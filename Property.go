@@ -1,19 +1,17 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"tenant-management/model"
 )
 
-type Property struct {
-	ownerEmail    string
-	propertyName  string
-	availableFlat int
-	occupiedFlat  int
-}
-
+//var ownerList = make(map[string]model.Owner)
 var propertyList = make(map[string]Property)
+//var tenantList = make(map[string]Tenant)
 
 func main() {
 
@@ -23,34 +21,33 @@ func main() {
 }
 
 func handleRequests() {
-	http.HandleFunc("/updateproperty", updateproperty)
+	http.HandleFunc("/updateProperty", updateProperty)
 	err := http.ListenAndServe(":8080", nil)
 	log.Fatal(err)
 }
 
-func updateproperty(w http.ResponseWriter, r *http.Request) {
+func updateProperty(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "POST" {
 
-		var ownerEmail string
-		var propertyName string
-    var availableFlat int
-    var occupiedFlat int 
+		data, err := ioutil.ReadAll(r.Body)
 
-		fmt.Println("Enter owner email:")
-		_, _ = fmt.Scanf("%s", ownerEmail)
-
-		fmt.Println("Enter owner propertyName:")
-		_, _ = fmt.Scanf("%s", propertyName)
-
-		property := Property{
-			ownerEmail: ownerEmail,
-			propertyName: propertyName,
-      availableFlat: availableFlat,
-      occupiedFlat: occupiedFlat,
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
 		}
 
-		propertyList[ownerEmail] = property
-		fmt.Printf("Welcome %v", propertyName)
+		// Unmarshal
+		var property model.Property
+		errM := json.Unmarshal(data, &property)
+
+		// save data
+		propertyList[property.propertyName] = property
+
+		if errM != nil {
+			http.Error(w, errM.Error(), 500)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprintf(w, "Property Updated %s!",  property.propertyName)
 	}
 }
